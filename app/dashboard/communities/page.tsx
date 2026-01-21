@@ -10,6 +10,7 @@ import { MapPin, Users, Plus, Shield, Compass } from 'lucide-react';
 import { TopNav } from '@/components/layout/TopNav';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 interface Community {
     id: string;
@@ -127,31 +128,33 @@ export default function CommunitiesPage() {
                     ) : (
                         <div className="grid gap-6 md:grid-cols-2">
                             {currentList.map(community => (
-                                <Card key={community.id} className="border-none shadow-xl bg-card/50 backdrop-blur-md rounded-3xl overflow-hidden group hover:scale-[1.01] transition-transform">
-                                    <div className="h-24 bg-gradient-to-br from-primary/20 to-secondary/20 group-hover:from-primary/30 transition-colors" />
-                                    <CardHeader className="-mt-8">
-                                        <CardTitle className="text-2xl font-black italic uppercase tracking-tighter">{community.name}</CardTitle>
-                                        <CardDescription className="flex items-center gap-2 font-bold text-[10px] uppercase tracking-widest">
-                                            <MapPin className="h-3 w-3 text-primary" />
-                                            {community.city || 'Global Nexus'}
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <p className="text-sm font-medium leading-relaxed line-clamp-2 opacity-80">{community.description}</p>
-                                    </CardContent>
-                                    <CardFooter className="flex justify-between items-center bg-secondary/5 pt-4 pb-4 px-6">
-                                        <div className="flex items-center gap-2 font-black text-[10px] uppercase tracking-widest opacity-60">
-                                            <Users className="h-4 w-4" />
-                                            {community._count.members} Members
-                                        </div>
-                                        {activeTab === 'suggested' && (
-                                            <Button onClick={() => handleJoin(community.id)} size="sm" className="rounded-full px-6 font-black uppercase text-[10px]">Join Tribe</Button>
-                                        )}
-                                        {activeTab === 'my' && (
-                                            <Button variant="ghost" size="sm" className="rounded-full px-6 font-black uppercase text-[10px]">Enter Hall</Button>
-                                        )}
-                                    </CardFooter>
-                                </Card>
+                                <Link key={community.id} href={`/dashboard/communities/${community.id}`}>
+                                    <Card className="border-none shadow-xl bg-card/50 backdrop-blur-md rounded-3xl overflow-hidden group hover:scale-[1.01] transition-transform cursor-pointer">
+                                        <div className="h-24 bg-gradient-to-br from-primary/20 to-secondary/20 group-hover:from-primary/30 transition-colors" />
+                                        <CardHeader className="-mt-8">
+                                            <CardTitle className="text-2xl font-black italic uppercase tracking-tighter">{community.name}</CardTitle>
+                                            <CardDescription className="flex items-center gap-2 font-bold text-[10px] uppercase tracking-widest">
+                                                <MapPin className="h-3 w-3 text-primary" />
+                                                {community.city || 'Global Nexus'}
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <p className="text-sm font-medium leading-relaxed line-clamp-2 opacity-80">{community.description}</p>
+                                        </CardContent>
+                                        <CardFooter className="flex justify-between items-center bg-secondary/5 pt-4 pb-4 px-6">
+                                            <div className="flex items-center gap-2 font-black text-[10px] uppercase tracking-widest opacity-60">
+                                                <Users className="h-4 w-4" />
+                                                {community._count.members} Members
+                                            </div>
+                                            {activeTab === 'suggested' && (
+                                                <Button onClick={(e) => { e.preventDefault(); handleJoin(community.id); }} size="sm" className="rounded-full px-6 font-black uppercase text-[10px]">Join Tribe</Button>
+                                            )}
+                                            {activeTab === 'my' && (
+                                                <Button variant="ghost" size="sm" className="rounded-full px-6 font-black uppercase text-[10px]">Enter Hall</Button>
+                                            )}
+                                        </CardFooter>
+                                    </Card>
+                                </Link>
                             ))}
                         </div>
                     )}

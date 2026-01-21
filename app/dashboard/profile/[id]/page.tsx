@@ -110,7 +110,7 @@ export default function UserProfilePage({ params }: Props) {
                                 <div className="relative group">
                                     <div className="h-32 w-32 rounded-full bg-secondary overflow-hidden border-4 border-background shadow-2xl flex items-center justify-center text-4xl font-bold">
                                         {profile.image ? (
-                                            <img src={`${API_URL}${profile.image}`} alt={profile.name} className="h-full w-full object-cover" />
+                                            <img src={`${API_URL}${profile.image}?t=${Date.now()}`} alt={profile.name} className="h-full w-full object-cover" />
                                         ) : (
                                             profile.name.charAt(0).toUpperCase()
                                         )}

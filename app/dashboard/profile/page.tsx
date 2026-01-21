@@ -13,6 +13,7 @@ import api from '@/lib/api';
 import { TopNav } from '@/components/layout/TopNav';
 import { cn } from '@/lib/utils';
 import { CreateGoalModal } from '@/components/modals/CreateGoalModal';
+import Link from 'next/link';
 
 const API_URL = 'http://localhost:4000';
 
@@ -39,15 +40,24 @@ export default function ProfilePage() {
     const [bio, setBio] = useState(user?.bio || '');
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [showRoutineModal, setShowRoutineModal] = useState(false);
+    const [isMounted, setIsMounted] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [userPosts, setUserPosts] = useState<Post[]>([]);
 
     useEffect(() => {
+        setIsMounted(true);
         if (user?.id) {
             fetchUserPosts();
         }
     }, [user?.id]);
+
+    useEffect(() => {
+        if (user && !isEditing) {
+            setName(user.name || '');
+            setBio(user.bio || '');
+        }
+    }, [user, isEditing]);
 
     const fetchUserPosts = async () => {
         try {
@@ -87,7 +97,7 @@ export default function ProfilePage() {
         }
     };
 
-    const avatarUrl = avatarPreview || (user?.image ? `${API_URL}${user.image}` : null);
+    const avatarUrl = avatarPreview || (user?.image ? (isMounted ? `${API_URL}${user.image}?t=${Date.now()}` : `${API_URL}${user.image}`) : null);
 
     return (
         <div className="min-h-screen bg-background">
@@ -242,17 +252,19 @@ export default function ProfilePage() {
                             <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                                 <Settings className="h-4 w-4" /> Disciplines
                             </h2>
-                            <Card className="border-none shadow-sm">
-                                <CardHeader>
-                                    <CardTitle className="text-lg">My Routines</CardTitle>
-                                    <CardDescription>Daily systems of growth</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <Button onClick={() => setShowRoutineModal(true)} variant="outline" className="w-full justify-start text-muted-foreground border-dashed bg-transparent hover:bg-secondary/50">
-                                        + New Routine
-                                    </Button>
-                                </CardContent>
-                            </Card>
+                            <Link href="/dashboard/routines">
+                                <Card className="border-none shadow-sm bg-card/60 hover:bg-card/80 transition-all cursor-pointer rounded-[2rem] overflow-hidden group">
+                                    <CardHeader className="p-8">
+                                        <CardTitle className="text-xl font-black italic uppercase tracking-tighter group-hover:text-primary transition-colors">My Routines</CardTitle>
+                                        <CardDescription className="text-[10px] font-bold uppercase tracking-widest opacity-60">Daily systems of unyielding growth</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="px-8 pb-8">
+                                        <Button onClick={(e) => { e.preventDefault(); setShowRoutineModal(true); }} variant="outline" className="w-full justify-start text-muted-foreground border-dashed bg-transparent hover:bg-primary/10 hover:text-primary rounded-xl">
+                                            + Summon Ritual
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+                            </Link>
                         </div>
                     </div>
                 </main>

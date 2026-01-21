@@ -54,9 +54,11 @@ export function Feed() {
     const [expandedPostId, setExpandedPostId] = useState<string | null>(null);
     const [comments, setComments] = useState<Record<string, Comment[]>>({});
     const [newComment, setNewComment] = useState('');
+    const [isMounted, setIsMounted] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
+        setIsMounted(true);
         fetchPosts();
     }, []);
 
@@ -146,6 +148,15 @@ export function Feed() {
         }
     }
 
+    const handleFollow = async (userId: string) => {
+        try {
+            await api.post(`/users/${userId}/follow`);
+            // Optionally show a toast or change button state
+        } catch (error) {
+            console.error("Failed to follow user", error);
+        }
+    }
+
     const removeImage = (index: number) => {
         setImagePreviews(prev => prev.filter((_, i) => i !== index));
     };
@@ -158,7 +169,7 @@ export function Feed() {
                     <div className="flex gap-4">
                         <div className="h-12 w-12 rounded-full bg-secondary flex-shrink-0 overflow-hidden border-2 border-background shadow-lg">
                             {user?.image ? (
-                                <img src={`${API_URL}${user.image}`} alt={user.name} className="h-full w-full object-cover" />
+                                <img src={isMounted ? `${API_URL}${user.image}?t=${Date.now()}` : `${API_URL}${user.image}`} alt={user.name} className="h-full w-full object-cover" />
                             ) : (
                                 <div className="h-full w-full flex items-center justify-center text-sm font-black">{user?.name?.charAt(0).toUpperCase()}</div>
                             )}
@@ -234,16 +245,26 @@ export function Feed() {
                                 <Link href={post.author.id === user?.id ? '/dashboard/profile' : `/dashboard/profile/${post.author.id}`}>
                                     <div className="h-14 w-14 rounded-full bg-secondary flex items-center justify-center text-xl font-black overflow-hidden border-2 border-background shadow-md cursor-pointer hover:border-primary transition-colors">
                                         {post.author.image ? (
-                                            <img src={`${API_URL}${post.author.image}`} alt={post.author.name} className="h-full w-full object-cover" />
+                                            <img src={isMounted ? `${API_URL}${post.author.image}?t=${Date.now()}` : `${API_URL}${post.author.image}`} alt={post.author.name} className="h-full w-full object-cover" />
                                         ) : (
                                             post.author.name.charAt(0).toUpperCase()
                                         )}
                                     </div>
                                 </Link>
                                 <div>
-                                    <Link href={post.author.id === user?.id ? '/dashboard/profile' : `/dashboard/profile/${post.author.id}`}>
-                                        <p className="font-black text-lg italic uppercase tracking-tighter cursor-pointer hover:text-primary transition-colors">{post.author.name}</p>
-                                    </Link>
+                                    <div className="flex items-center gap-3">
+                                        <Link href={post.author.id === user?.id ? '/dashboard/profile' : `/dashboard/profile/${post.author.id}`}>
+                                            <p className="font-black text-lg italic uppercase tracking-tighter cursor-pointer hover:text-primary transition-colors">{post.author.name}</p>
+                                        </Link>
+                                        {post.author.id !== user?.id && (
+                                            <button
+                                                onClick={() => handleFollow(post.author.id)}
+                                                className="text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1 bg-primary/10 text-primary rounded-full hover:bg-primary hover:text-white transition-all"
+                                            >
+                                                + Follow
+                                            </button>
+                                        )}
+                                    </div>
                                     <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest opacity-60">{new Date(post.createdAt).toLocaleDateString()}</p>
                                 </div>
                             </CardHeader>

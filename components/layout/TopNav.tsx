@@ -13,6 +13,11 @@ export function TopNav() {
     const { user, logout } = useAuth();
     const [profileMenuOpen, setProfileMenuOpen] = useState(false);
     const [notificationsOpen, setNotificationsOpen] = useState(false);
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     // Notifications placeholder
     const notifications = [
@@ -70,7 +75,7 @@ export function TopNav() {
                         className="h-9 w-9 rounded-full bg-secondary overflow-hidden border-2 border-transparent hover:border-primary/50 transition-all"
                     >
                         {user?.image ? (
-                            <img src={`${API_URL}${user.image}`} alt={user.name} className="h-full w-full object-cover" />
+                            <img src={isMounted ? `${API_URL}${user.image}?t=${Date.now()}` : `${API_URL}${user.image}`} alt={user.name} className="h-full w-full object-cover" />
                         ) : (
                             <div className="h-full w-full flex items-center justify-center text-xs font-bold">{user?.name?.charAt(0)}</div>
                         )}

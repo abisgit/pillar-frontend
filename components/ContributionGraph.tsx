@@ -2,43 +2,59 @@
 
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
 
 export function ContributionGraph() {
+    const { user } = useAuth();
     const [stats, setStats] = useState<Record<string, number>>({});
+    const [loading, setLoading] = useState(true);
 
-    // Generate last 365 days
-    const days = Array.from({ length: 365 }, (_, i) => {
+    // Generate last 180 days (half year for better fit)
+    const days = Array.from({ length: 180 }, (_, i) => {
         const d = new Date();
-        d.setDate(d.getDate() - (364 - i));
+        d.setDate(d.getDate() - (179 - i));
         return d.toISOString().split('T')[0];
     });
 
     useEffect(() => {
-        api.get('/users/stats')
-            .then(res => setStats(res.data))
-            .catch(err => console.error(err));
-    }, []);
+        if (!user) return;
+        api.get(`/users/${user.id}/stats`)
+            .then(res => {
+                const statsMap: Record<string, number> = {};
+                res.data.forEach((item: { date: string, count: number }) => {
+                    statsMap[item.date] = item.count;
+                });
+                setStats(statsMap);
+            })
+            .catch(err => console.error(err))
+            .finally(() => setLoading(false));
+    }, [user]);
 
     const getColor = (count: number) => {
-        if (!count) return 'bg-muted/40'; // Gray/Empty
-        if (count === 1) return 'bg-emerald-200 dark:bg-emerald-900';
-        if (count <= 3) return 'bg-emerald-400 dark:bg-emerald-700';
-        return 'bg-emerald-600 dark:bg-emerald-500';
+        if (!count) return 'bg-secondary/20'; // Gray/Empty
+        if (count === 1) return 'bg-primary/40';
+        if (count <= 3) return 'bg-primary/70';
+        return 'bg-primary';
     };
 
     return (
-        <Card>
-            <CardHeader className="pb-2">
-                <CardTitle className="text-base">Consistency Graph</CardTitle>
+        <Card className="border-none shadow-none bg-transparent">
+            <CardHeader className="px-0 pb-4">
+                <CardTitle className="text-sm font-black uppercase tracking-widest opacity-60">Journey Intensity</CardTitle>
+                <CardDescription className="text-[10px] font-bold uppercase tracking-tighter">Your daily commitments etched in time.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-0">
                 <div className="flex flex-wrap gap-1">
                     {days.map(date => (
                         <div
                             key={date}
-                            title={`${date}: ${stats[date] || 0} goals`}
-                            className={`h-3 w-3 rounded-sm ${getColor(stats[date] || 0)}`}
+                            title={`${date}: ${stats[date] || 0} routines`}
+                            className={cn(
+                                "h-3 w-3 rounded-[2px] transition-all duration-500",
+                                getColor(stats[date] || 0)
+                            )}
                         />
                     ))}
                 </div>
