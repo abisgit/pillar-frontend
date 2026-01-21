@@ -5,9 +5,10 @@ import api from '@/lib/api';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Heart, MessageSquare, Image as ImageIcon, X } from 'lucide-react';
+import { Heart, MessageSquare, Image as ImageIcon, X, Send } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 const API_URL = 'http://localhost:4000';
 
@@ -16,11 +17,23 @@ interface PostImage {
     url: string;
 }
 
+interface Comment {
+    id: string;
+    content: string;
+    createdAt: string;
+    author: {
+        id: string;
+        name: string;
+        image?: string;
+    }
+}
+
 interface Post {
     id: string;
     content: string;
     images: PostImage[];
     author: {
+        id: string;
         name: string;
         image?: string;
     };
@@ -38,6 +51,9 @@ export function Feed() {
     const [newPost, setNewPost] = useState('');
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
+    const [expandedPostId, setExpandedPostId] = useState<string | null>(null);
+    const [comments, setComments] = useState<Record<string, Comment[]>>({});
+    const [newComment, setNewComment] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -58,7 +74,6 @@ export function Feed() {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (files) {
-            const newPreviews: string[] = [];
             Array.from(files).forEach(file => {
                 const reader = new FileReader();
                 reader.onloadend = () => {
@@ -101,74 +116,99 @@ export function Feed() {
         }
     }
 
+    const toggleComments = async (postId: string) => {
+        if (expandedPostId === postId) {
+            setExpandedPostId(null);
+            return;
+        }
+        setExpandedPostId(postId);
+        try {
+            const res = await api.get(`/posts/${postId}/comments`);
+            setComments(prev => ({ ...prev, [postId]: res.data }));
+        } catch (error) {
+            console.error("Failed to fetch comments", error);
+        }
+    }
+
+    const handleSendComment = async (postId: string) => {
+        if (!newComment.trim()) return;
+        try {
+            const res = await api.post(`/posts/${postId}/comment`, { content: newComment });
+            setComments(prev => ({
+                ...prev,
+                [postId]: [...(prev[postId] || []), res.data]
+            }));
+            setNewComment('');
+            // Update local post comment count
+            setPosts(posts.map(p => p.id === postId ? { ...p, _count: { ...p._count, comments: p._count.comments + 1 } } : p));
+        } catch (error) {
+            console.error("Failed to send comment", error);
+        }
+    }
+
     const removeImage = (index: number) => {
         setImagePreviews(prev => prev.filter((_, i) => i !== index));
-        // Note: Real implementation would need to sync with FileList which is read-only
-        // For now, if they remove, we just clear and they can re-add if needed, 
-        // or we use a more complex file state.
     };
 
     return (
-        <div className="max-w-2xl mx-auto w-full space-y-6 pb-20">
+        <div className="max-w-2xl mx-auto w-full space-y-8 pb-20">
             {/* Create Post */}
-            <Card className="border-none shadow-sm bg-card/50 backdrop-blur-sm">
-                <CardContent className="pt-6">
+            <Card className="border-none shadow-xl bg-card/40 backdrop-blur-md rounded-[2.5rem] overflow-hidden">
+                <CardContent className="pt-8 px-8 pb-6">
                     <div className="flex gap-4">
-                        <div className="h-10 w-10 rounded-full bg-secondary flex-shrink-0 overflow-hidden border">
+                        <div className="h-12 w-12 rounded-full bg-secondary flex-shrink-0 overflow-hidden border-2 border-background shadow-lg">
                             {user?.image ? (
                                 <img src={`${API_URL}${user.image}`} alt={user.name} className="h-full w-full object-cover" />
                             ) : (
-                                <div className="h-full w-full flex items-center justify-center text-xs font-bold">{user?.name?.charAt(0)}</div>
+                                <div className="h-full w-full flex items-center justify-center text-sm font-black">{user?.name?.charAt(0).toUpperCase()}</div>
                             )}
                         </div>
                         <div className="flex-1 space-y-4">
                             <textarea
-                                placeholder="Share your progress..."
+                                placeholder="Reflect on your mastery..."
                                 value={newPost}
                                 onChange={(e) => setNewPost(e.target.value)}
-                                className="w-full border-none bg-transparent shadow-none px-0 focus:ring-0 text-lg placeholder:text-muted-foreground/30 resize-none min-h-[80px]"
+                                className="w-full border-none bg-transparent shadow-none px-0 focus:ring-0 text-xl font-medium placeholder:text-muted-foreground/30 resize-none min-h-[100px]"
                             />
 
                             {imagePreviews.length > 0 && (
-                                <div className="grid grid-cols-2 gap-2 mt-2">
+                                <div className="grid grid-cols-2 gap-3 mt-4">
                                     {imagePreviews.map((preview, idx) => (
-                                        <div key={idx} className="relative aspect-video rounded-lg overflow-hidden border">
+                                        <div key={idx} className="relative aspect-video rounded-3xl overflow-hidden border shadow-inner group">
                                             <img src={preview} alt="Preview" className="w-full h-full object-cover" />
                                             <button
                                                 onClick={() => removeImage(idx)}
-                                                className="absolute top-1 right-1 bg-black/50 p-1 rounded-full text-white hover:bg-black/70 transition-colors"
+                                                className="absolute top-2 right-2 bg-black/50 text-white p-2 rounded-full hover:bg-black/80 transition-all opacity-0 group-hover:opacity-100"
                                             >
-                                                <X className="h-3 w-3" />
+                                                <X className="h-4 w-4" />
                                             </button>
                                         </div>
                                     ))}
                                 </div>
                             )}
 
-                            <div className="flex justify-between items-center pt-4 border-t border-border/50">
-                                <div className="flex gap-4">
-                                    <button
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-2 text-sm font-medium"
-                                    >
-                                        <ImageIcon className="h-5 w-5" />
-                                        <span>Media</span>
-                                    </button>
-                                    <input
-                                        type="file"
-                                        ref={fileInputRef}
-                                        className="hidden"
-                                        multiple
-                                        accept="image/*"
-                                        onChange={handleFileChange}
-                                    />
-                                </div>
+                            <div className="flex justify-between items-center pt-4 border-t border-border/20">
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="text-muted-foreground hover:text-primary transition-all flex items-center gap-2 text-xs font-black uppercase tracking-widest"
+                                >
+                                    <ImageIcon className="h-5 w-5" />
+                                    <span>Append Media</span>
+                                </button>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    className="hidden"
+                                    multiple
+                                    accept="image/*"
+                                    onChange={handleFileChange}
+                                />
                                 <Button
                                     onClick={handlePost}
                                     disabled={(!newPost.trim() && imagePreviews.length === 0)}
-                                    className="rounded-full px-6"
+                                    className="rounded-full px-10 h-10 font-black uppercase tracking-widest text-[10px]"
                                 >
-                                    Post
+                                    Broadcast
                                 </Button>
                             </div>
                         </div>
@@ -178,37 +218,40 @@ export function Feed() {
 
             {/* Feed */}
             {loading ? (
-                <div className="text-center py-10 space-y-4">
-                    <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
-                    <p className="text-muted-foreground animate-pulse">Summoning the feed...</p>
+                <div className="text-center py-20 space-y-4 font-black uppercase tracking-[0.5em] text-muted-foreground animate-pulse">
+                    Gathering Reflections...
                 </div>
             ) : posts.length === 0 ? (
-                <div className="text-center py-16 bg-card rounded-xl border border-dashed">
-                    <p className="text-muted-foreground">The arena is empty. Start the first thread.</p>
+                <div className="text-center py-20 border-2 border-dashed rounded-[3rem] opacity-30">
+                    <p className="font-bold">The nexus is silent. Be the first to speak.</p>
                 </div>
             ) : (
                 posts.map(post => {
                     const isLiked = post.likes?.some(l => l.userId === user?.id);
                     return (
-                        <Card key={post.id} className="border-none shadow-sm overflow-hidden">
-                            <CardHeader className="flex flex-row items-center gap-3 pb-3">
-                                <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center text-sm font-bold text-muted-foreground overflow-hidden border">
-                                    {post.author.image ? (
-                                        <img src={`${API_URL}${post.author.image}`} alt={post.author.name} className="h-full w-full object-cover" />
-                                    ) : (
-                                        post.author.name.charAt(0)
-                                    )}
-                                </div>
+                        <Card key={post.id} className="border-none shadow-2xl bg-card/50 backdrop-blur-sm rounded-[3rem] overflow-hidden transition-all hover:translate-y-[-2px]">
+                            <CardHeader className="flex flex-row items-center gap-4 p-8 pb-4">
+                                <Link href={post.author.id === user?.id ? '/dashboard/profile' : `/dashboard/profile/${post.author.id}`}>
+                                    <div className="h-14 w-14 rounded-full bg-secondary flex items-center justify-center text-xl font-black overflow-hidden border-2 border-background shadow-md cursor-pointer hover:border-primary transition-colors">
+                                        {post.author.image ? (
+                                            <img src={`${API_URL}${post.author.image}`} alt={post.author.name} className="h-full w-full object-cover" />
+                                        ) : (
+                                            post.author.name.charAt(0).toUpperCase()
+                                        )}
+                                    </div>
+                                </Link>
                                 <div>
-                                    <p className="font-bold text-sm leading-none mb-1">{post.author.name}</p>
-                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{new Date(post.createdAt).toLocaleDateString()}</p>
+                                    <Link href={post.author.id === user?.id ? '/dashboard/profile' : `/dashboard/profile/${post.author.id}`}>
+                                        <p className="font-black text-lg italic uppercase tracking-tighter cursor-pointer hover:text-primary transition-colors">{post.author.name}</p>
+                                    </Link>
+                                    <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest opacity-60">{new Date(post.createdAt).toLocaleDateString()}</p>
                                 </div>
                             </CardHeader>
-                            <CardContent className="space-y-4">
-                                <p className="text-sm leading-relaxed whitespace-pre-wrap">{post.content}</p>
+                            <CardContent className="space-y-6 px-8 py-0">
+                                <p className="text-lg font-medium leading-relaxed whitespace-pre-wrap">{post.content}</p>
                                 {post.images && post.images.length > 0 && (
                                     <div className={cn(
-                                        "grid gap-1 rounded-xl overflow-hidden border",
+                                        "grid gap-2 rounded-[2.5rem] overflow-hidden shadow-inner",
                                         post.images.length === 1 ? "grid-cols-1" : "grid-cols-2"
                                     )}>
                                         {post.images.map(img => (
@@ -216,27 +259,64 @@ export function Feed() {
                                                 key={img.id}
                                                 src={`${API_URL}${img.url}`}
                                                 alt="Post content"
-                                                className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-300"
+                                                className="w-full h-full object-cover aspect-video hover:scale-[1.02] transition-transform duration-500"
                                             />
                                         ))}
                                     </div>
                                 )}
                             </CardContent>
-                            <CardFooter className="border-t pt-3 pb-3 flex gap-4 text-muted-foreground">
-                                <button
-                                    onClick={() => handleLike(post.id)}
-                                    className={cn(
-                                        "flex items-center gap-2 transition-all p-2 rounded-lg hover:bg-secondary text-sm font-medium",
-                                        isLiked ? "text-red-500" : ""
-                                    )}
-                                >
-                                    <Heart className={cn("h-4 w-4", isLiked ? "fill-current" : "")} />
-                                    <span>{post._count?.likes || 0}</span>
-                                </button>
-                                <button className="flex items-center gap-2 hover:bg-secondary p-2 rounded-lg transition-all text-sm font-medium">
-                                    <MessageSquare className="h-4 w-4" />
-                                    <span>{post._count?.comments || 0}</span>
-                                </button>
+                            <CardFooter className="pt-6 pb-8 px-8 flex flex-col items-stretch gap-6">
+                                <div className="flex gap-8 text-muted-foreground border-t border-border/20 pt-6">
+                                    <button
+                                        onClick={() => handleLike(post.id)}
+                                        className={cn(
+                                            "flex items-center gap-2 transition-all font-black uppercase text-[10px] tracking-widest hover:text-red-500",
+                                            isLiked ? "text-red-500" : ""
+                                        )}
+                                    >
+                                        <Heart className={cn("h-5 w-5", isLiked ? "fill-current" : "")} />
+                                        <span>{post._count?.likes || 0}</span>
+                                    </button>
+                                    <button
+                                        onClick={() => toggleComments(post.id)}
+                                        className="flex items-center gap-2 transition-all font-black uppercase text-[10px] tracking-widest hover:text-primary"
+                                    >
+                                        <MessageSquare className="h-5 w-5" />
+                                        <span>{post._count?.comments || 0}</span>
+                                    </button>
+                                </div>
+
+                                {expandedPostId === post.id && (
+                                    <div className="space-y-4 animate-in slide-in-from-top-4 duration-300">
+                                        <div className="space-y-3 max-h-60 overflow-y-auto pr-2 scrollbar-hide">
+                                            {comments[post.id]?.map(comment => (
+                                                <div key={comment.id} className="flex gap-3 items-start">
+                                                    <div className="h-8 w-8 rounded-full bg-secondary overflow-hidden shrink-0 border">
+                                                        {comment.author.image ? (
+                                                            <img src={`${API_URL}${comment.author.image}`} alt={comment.author.name} className="h-full w-full object-cover" />
+                                                        ) : (
+                                                            <div className="h-full w-full flex items-center justify-center text-[10px] font-black">{comment.author.name.charAt(0)}</div>
+                                                        )}
+                                                    </div>
+                                                    <div className="bg-secondary/20 p-3 rounded-2xl flex-1">
+                                                        <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">{comment.author.name}</p>
+                                                        <p className="text-xs font-medium">{comment.content}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                value={newComment}
+                                                onChange={e => setNewComment(e.target.value)}
+                                                onKeyDown={e => e.key === 'Enter' && handleSendComment(post.id)}
+                                                placeholder="Write a comment..."
+                                                className="rounded-full bg-secondary/10 border-none shadow-inner text-sm px-6"
+                                            />
+                                            <Button onClick={() => handleSendComment(post.id)} className="rounded-full w-10 h-10 p-0"><Send className="h-4 w-4" /></Button>
+                                        </div>
+                                    </div>
+                                )}
                             </CardFooter>
                         </Card>
                     );

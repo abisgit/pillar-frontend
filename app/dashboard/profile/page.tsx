@@ -8,10 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Rightbar } from '@/components/layout/Rightbar';
 import { ContributionGraph } from '@/components/ContributionGraph';
-import { Camera, Edit2, Save, X, Heart, MessageSquare, Settings } from 'lucide-react';
+import { Camera, Edit2, Save, X, Heart, MessageSquare, Settings, Plus } from 'lucide-react';
 import api from '@/lib/api';
 import { TopNav } from '@/components/layout/TopNav';
 import { cn } from '@/lib/utils';
+import { CreateGoalModal } from '@/components/modals/CreateGoalModal';
 
 const API_URL = 'http://localhost:4000';
 
@@ -32,11 +33,12 @@ interface Post {
 }
 
 export default function ProfilePage() {
-    const { user, login } = useAuth();
+    const { user, login, updateUser } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
     const [name, setName] = useState(user?.name || '');
     const [bio, setBio] = useState(user?.bio || '');
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+    const [showRoutineModal, setShowRoutineModal] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [userPosts, setUserPosts] = useState<Post[]>([]);
@@ -77,10 +79,7 @@ export default function ProfilePage() {
 
         try {
             const res = await api.put('/users/profile', formData);
-            const token = localStorage.getItem('token');
-            if (token) {
-                login(token, res.data);
-            }
+            updateUser(res.data);
             setIsEditing(false);
             setAvatarPreview(null);
         } catch (error) {
@@ -249,17 +248,18 @@ export default function ProfilePage() {
                                     <CardDescription>Daily systems of growth</CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    <Button variant="outline" className="w-full justify-start text-muted-foreground border-dashed bg-transparent hover:bg-secondary/50">
+                                    <Button onClick={() => setShowRoutineModal(true)} variant="outline" className="w-full justify-start text-muted-foreground border-dashed bg-transparent hover:bg-secondary/50">
                                         + New Routine
                                     </Button>
                                 </CardContent>
                             </Card>
                         </div>
                     </div>
-
                 </main>
                 <Rightbar />
             </div>
+
+            <CreateGoalModal isOpen={showRoutineModal} onClose={() => setShowRoutineModal(false)} />
         </div>
     );
 }
